@@ -1,6 +1,8 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Camera, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface WebcamViewProps {
   className?: string;
@@ -24,32 +26,47 @@ const WebcamView: React.FC<WebcamViewProps> = ({
   const canvasRef = externalCanvasRef || internalCanvasRef;
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function setupCamera() {
-      try {
-        setIsLoading(true);
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width, height },
-          audio: false,
-        });
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play();
-            setIsLoading(false);
-            setHasPermission(true);
-          };
-        }
-      } catch (error) {
-        console.error("Error accessing camera:", error);
-        setHasPermission(false);
-        setIsLoading(false);
+  const startCamera = async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width, height },
+        audio: false,
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setIsLoading(false);
+          setHasPermission(true);
+        };
+      }
+    } catch (error: any) {
+      console.error("Error accessing camera:", error);
+      
+      setHasPermission(false);
+      setIsLoading(false);
+      
+      // Set a more user-friendly error message based on the error type
+      if (error.name === "NotAllowedError") {
+        setErrorMessage("Camera access denied. Please allow camera access in your browser settings.");
+      } else if (error.name === "NotFoundError") {
+        setErrorMessage("No camera found. Please connect a camera to your device.");
+      } else if (error.name === "AbortError" && error.message?.includes("Timeout")) {
+        setErrorMessage("Camera connection timed out. Please try again or use video upload instead.");
+      } else {
+        setErrorMessage(`Camera error: ${error.message || "Unknown error"}`);
       }
     }
+  };
 
-    setupCamera();
+  useEffect(() => {
+    startCamera();
 
     return () => {
       // Clean up video stream on unmount
@@ -87,6 +104,10 @@ const WebcamView: React.FC<WebcamViewProps> = ({
     return () => cancelAnimationFrame(frameId);
   }, [hasPermission, onFrame, width, height, drawCanvas]);
 
+  const handleRetry = () => {
+    startCamera();
+  };
+
   return (
     <div className={cn("relative", className)}>
       {isLoading && (
@@ -96,11 +117,18 @@ const WebcamView: React.FC<WebcamViewProps> = ({
       )}
       
       {hasPermission === false && (
-        <div className="absolute inset-0 flex items-center justify-center bg-destructive bg-opacity-20 text-destructive z-10 p-4 text-center">
-          <div>
-            <p className="font-bold text-lg">Camera access denied</p>
-            <p className="text-sm">Please allow camera access to use the fitness tracker</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background border rounded-lg z-10 p-6 text-center">
+          <AlertTriangle className="w-12 h-12 text-destructive mb-4" />
+          <h3 className="text-lg font-medium mb-2">Camera Access Issue</h3>
+          <p className="mb-4 text-muted-foreground">{errorMessage || "Unable to access camera"}</p>
+          <div className="flex gap-3">
+            <Button onClick={handleRetry} variant="outline">
+              Try Again
+            </Button>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            You can also use the "Video" tab to upload and analyze a pre-recorded video.
+          </p>
         </div>
       )}
       
