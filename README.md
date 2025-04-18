@@ -1,73 +1,44 @@
-# Welcome to your Lovable project
 
-## Project info
+# Fitness Tracker Pro - Web Edition
 
-**URL**: https://lovable.dev/projects/62473879-cf21-4013-b8c0-70d9785d7d02
+A real-time fitness tracking web application that uses TensorFlow.js and pose detection to monitor exercise form, count repetitions, and provide feedback for various exercises using your webcam.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Real-Time Pose Detection**: Uses TensorFlow.js pose detection to track key body landmarks during workouts.
+- **Exercise Recognition**: Identifies the current exercise being performed by analyzing body movements and positions.
+- **Repetition Counting**: Counts exercise repetitions by monitoring joint angles and detecting when they cross specific thresholds.
+- **Form Feedback**: Provides immediate feedback on exercise form to help you perform exercises safely and effectively.
+- **Exercise Library**: Supports multiple exercises including squats, pushups, bicep curls, and shoulder presses.
 
-**Use Lovable**
+## Technical Implementation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/62473879-cf21-4013-b8c0-70d9785d7d02) and start prompting.
+- **Frontend**: React with TypeScript, styled with Tailwind CSS
+- **Pose Detection**: TensorFlow.js and PoseNet/MoveNet models
+- **UI Components**: Shadcn UI component library
+- **State Management**: React hooks and context
 
-Changes made via Lovable will be committed automatically to this repo.
+## Privacy
 
-**Use your preferred IDE**
+All processing happens locally in your browser. No video data is stored or sent to any server, ensuring your privacy is protected.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Supported Exercises
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Squats
+- Push-ups
+- Bicep Curls
+- Shoulder Presses
 
-Follow these steps:
+## Getting Started
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Clone this repository
+2. Install dependencies with `npm install`
+3. Run the development server with `npm run dev`
+4. Open your browser to the local development URL
+5. Allow camera access when prompted
+6. Start exercising!
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Inspiration
 
-# Step 3: Install the necessary dependencies.
-npm i
+This web application is inspired by the Python-based [Fitness Tracker Pro](https://github.com/a1harfoush/Fitness_Tracker_Pro) project, adapting its functionality for the web platform.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/62473879-cf21-4013-b8c0-70d9785d7d02) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
