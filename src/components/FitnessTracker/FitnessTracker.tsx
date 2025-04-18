@@ -1,10 +1,10 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import WebcamView from "./WebcamView";
 import ExerciseStats from "./ExerciseStats";
 import FormGuide from "./FormGuide";
 import WelcomeModal from "./WelcomeModal";
+import VideoUpload from "./VideoUpload";
 import LoadingAnimation from "./LoadingAnimation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import {
   detectExerciseType,
   processExerciseState
 } from "@/services/exerciseService";
-import { Dumbbell, Camera, AlertTriangle, Play, Pause } from "lucide-react";
+import { Dumbbell, Camera, FileVideo, AlertTriangle, Play, Pause } from "lucide-react";
 
 interface FitnessTrackerProps {
   className?: string;
@@ -38,8 +38,9 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
   const [exerciseState, setExerciseState] = useState<ExerciseState>(initExerciseState(ExerciseType.NONE));
   const [selectedTab, setSelectedTab] = useState<string>("auto");
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [inputMode, setInputMode] = useState<'webcam' | 'video'>('webcam');
+  const [uploadedVideo, setUploadedVideo] = useState<HTMLVideoElement | null>(null);
 
-  // Initialize the pose detector
   useEffect(() => {
     const loadModel = async () => {
       try {
@@ -53,32 +54,26 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     loadModel();
   }, []);
 
-  // Process webcam frames
-  const processFrame = async (imageData: ImageData) => {
+  const processFrame = async (imageData: ImageData | HTMLVideoElement) => {
     if (!isModelLoaded || !isTracking) return;
 
     try {
-      // Detect pose
       const detectedPose = await detectPose(imageData);
       setPose(detectedPose);
 
-      // Draw pose on canvas
       if (canvasRef.current && detectedPose) {
         const ctx = canvasRef.current.getContext("2d");
         if (ctx) {
-          ctx.drawImage(
-            imageData as unknown as CanvasImageSource, 
-            0, 0, 
-            canvasRef.current.width, 
-            canvasRef.current.height
-          );
+          if (imageData instanceof ImageData) {
+            ctx.putImageData(imageData, 0, 0);
+          } else {
+            ctx.drawImage(imageData, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          }
           drawPose(ctx, detectedPose);
         }
       }
 
-      // Update exercise tracking
       if (detectedPose) {
-        // In auto mode, detect the exercise
         if (selectedTab === "auto" && currentExercise === ExerciseType.NONE) {
           const exerciseType = detectExerciseType(detectedPose);
           if (exerciseType !== ExerciseType.NONE) {
@@ -87,7 +82,6 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
           }
         }
 
-        // Process the current exercise
         if (currentExercise !== ExerciseType.NONE) {
           const updatedState = processExerciseState(exerciseState, detectedPose);
           setExerciseState(updatedState);
@@ -98,13 +92,16 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     }
   };
 
-  // Handle exercise selection
+  const handleVideoLoad = (video: HTMLVideoElement) => {
+    setUploadedVideo(video);
+    setInputMode('video');
+  };
+
   const handleExerciseSelect = (type: ExerciseType) => {
     setCurrentExercise(type);
     setExerciseState(initExerciseState(type));
   };
 
-  // Handle tab change
   const handleTabChange = (tab: string) => {
     setSelectedTab(tab);
     if (tab === "auto") {
@@ -117,24 +114,70 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     <div className={cn("grid gap-6", className)}>
       <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Webcam and pose detection */}
         <Card className="flex-1">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center">
-              <Camera className="w-5 h-5 mr-2" />
-              Pose Detection
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center">
+                {inputMode === 'webcam' ? (
+                  <>
+                    <Camera className="w-5 h-5 mr-2" />
+                    Pose Detection
+                  </>
+                ) : (
+                  <>
+                    <FileVideo className="w-5 h-5 mr-2" />
+                    Video Analysis
+                  </>
+                )}
+              </CardTitle>
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'webcam' | 'video')} className="w-auto">
+                <TabsList>
+                  <TabsTrigger value="webcam" className="flex items-center gap-2">
+                    <Camera className="w-4 h-4" />
+                    <span className="hidden sm:inline">Webcam</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="video" className="flex items-center gap-2">
+                    <FileVideo className="w-4 h-4" />
+                    <span className="hidden sm:inline">Video</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="relative">
-              <WebcamView
-                className="w-full h-auto overflow-hidden rounded-md"
-                width={640}
-                height={480}
-                onFrame={processFrame}
-                drawCanvas={true}
-                canvasRef={canvasRef}
-              />
+              {inputMode === 'webcam' ? (
+                <WebcamView
+                  className="w-full h-auto overflow-hidden rounded-md"
+                  width={640}
+                  height={480}
+                  onFrame={processFrame}
+                  drawCanvas={true}
+                  canvasRef={canvasRef}
+                />
+              ) : (
+                uploadedVideo ? (
+                  <video
+                    ref={(video) => {
+                      if (video && isTracking) {
+                        video.play();
+                        const processVideoFrame = () => {
+                          if (video.paused || video.ended) return;
+                          processFrame(video);
+                          requestAnimationFrame(processVideoFrame);
+                        };
+                        processVideoFrame();
+                      }
+                    }}
+                    className="w-full h-auto rounded-md"
+                    width={640}
+                    height={480}
+                    controls
+                  />
+                ) : (
+                  <VideoUpload onVideoLoad={handleVideoLoad} />
+                )
+              )}
               
               {!isModelLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
@@ -147,7 +190,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
                   onClick={() => setIsTracking(!isTracking)}
                   variant={isTracking ? "destructive" : "default"}
                   size="sm"
-                  disabled={!isModelLoaded}
+                  disabled={!isModelLoaded || (inputMode === 'video' && !uploadedVideo)}
                 >
                   {isTracking ? (
                     <>
@@ -173,7 +216,6 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
           </CardContent>
         </Card>
 
-        {/* Exercise tracking and stats */}
         <div className="w-full lg:w-80">
           <Tabs 
             defaultValue="auto" 
