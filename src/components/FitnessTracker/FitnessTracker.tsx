@@ -44,6 +44,13 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
   const [inputMode, setInputMode] = useState<'webcam' | 'video'>('webcam');
   const [uploadedVideo, setUploadedVideo] = useState<HTMLVideoElement | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [showExerciseDemo, setShowExerciseDemo] = useState(false);
+  const [exerciseStates, setExerciseStates] = useState<Record<ExerciseType, ExerciseState>>({
+    [ExerciseType.NONE]: initExerciseState(ExerciseType.NONE),
+    [ExerciseType.SQUAT]: initExerciseState(ExerciseType.SQUAT),
+    [ExerciseType.BICEP_CURL]: initExerciseState(ExerciseType.BICEP_CURL),
+    [ExerciseType.SHOULDER_PRESS]: initExerciseState(ExerciseType.SHOULDER_PRESS),
+  });
 
   useEffect(() => {
     const loadModel = async () => {
@@ -222,6 +229,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
   const handleExerciseSelect = (type: ExerciseType) => {
     setCurrentExercise(type);
     setExerciseState(initExerciseState(type));
+    setShowExerciseDemo(true);
     toast.info(`Selected exercise: ${EXERCISES[type].name}`);
   };
 
@@ -244,7 +252,6 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     setIsTracking(!isTracking);
   };
 
-  // Status indicator for exercise form
   const getFormStatus = () => {
     if (currentExercise === ExerciseType.NONE) return null;
     
@@ -276,9 +283,23 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     return null;
   };
 
+  useEffect(() => {
+    if (currentExercise !== ExerciseType.NONE) {
+      setExerciseStates(prev => ({
+        ...prev,
+        [currentExercise]: exerciseState
+      }));
+    }
+  }, [exerciseState.totalReps, currentExercise]);
+
   return (
     <div className={cn("grid gap-6", className)}>
       <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
+      <ExerciseDemoModal
+        exerciseType={currentExercise}
+        open={showExerciseDemo}
+        onClose={() => setShowExerciseDemo(false)}
+      />
       <div className="flex flex-col lg:flex-row gap-6">
         <Card className="flex-1">
           <CardHeader className="pb-2">
@@ -463,6 +484,8 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
       {currentExercise !== ExerciseType.NONE && (
         <FormGuide exerciseType={currentExercise} />
       )}
+      
+      <ExerciseDashboard exerciseStates={exerciseStates} />
     </div>
   );
 };
