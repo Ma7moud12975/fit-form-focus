@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import WebcamView from "./WebcamView";
@@ -22,7 +23,8 @@ import {
   EXERCISES,
   initExerciseState,
   detectExerciseType,
-  processExerciseState
+  processExerciseState,
+  RepState
 } from "@/services/exerciseService";
 import { Dumbbell, Camera, FileVideo, AlertTriangle, Play, Pause, RefreshCw } from "lucide-react";
 
@@ -167,16 +169,8 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
             );
           }
 
-          // Determine if the form is correct based on the current exercise
-          let isCorrectForm = true;
-          if (currentExercise !== ExerciseType.NONE) {
-            const formIssues = exerciseState.formFeedback;
-            isCorrectForm = !formIssues.some(feedback => 
-              !feedback.includes('complete') && 
-              !feedback.includes('Rest') &&
-              !feedback.includes('Starting')
-            );
-          }
+          // Determine if the form is correct based on the current exercise state
+          const isCorrectForm = currentExercise !== ExerciseType.NONE ? exerciseState.formCorrect : true;
           
           // Draw the pose with color feedback
           drawPose(ctx, detectedPose, { isCorrectForm });
@@ -195,6 +189,16 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
 
         if (currentExercise !== ExerciseType.NONE) {
           const updatedState = processExerciseState(exerciseState, detectedPose);
+          
+          // If form changed from incorrect to correct, show a success toast
+          if (!exerciseState.formCorrect && updatedState.formCorrect) {
+            toast.success("Form corrected! Continue exercising");
+          } 
+          // If form changed from correct to incorrect, show a warning toast
+          else if (exerciseState.formCorrect && !updatedState.formCorrect) {
+            toast.warning("Incorrect form detected. Pausing count.");
+          }
+          
           setExerciseState(updatedState);
         }
       }
@@ -250,6 +254,38 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     }
     
     setIsTracking(!isTracking);
+  };
+
+  // Status indicator for exercise form
+  const getFormStatus = () => {
+    if (currentExercise === ExerciseType.NONE) return null;
+    
+    if (exerciseState.repState === RepState.RESTING) {
+      return (
+        <div className="mt-2 p-2 bg-blue-100 text-blue-800 rounded-md text-sm">
+          Resting between sets...
+        </div>
+      );
+    }
+    
+    if (exerciseState.repState === RepState.INCORRECT_FORM) {
+      return (
+        <div className="mt-2 p-2 bg-red-100 text-red-800 rounded-md text-sm flex items-center">
+          <AlertTriangle className="w-4 h-4 mr-2" />
+          <span>Incorrect form detected. Fix to continue counting.</span>
+        </div>
+      );
+    }
+    
+    if (exerciseState.formCorrect) {
+      return (
+        <div className="mt-2 p-2 bg-green-100 text-green-800 rounded-md text-sm">
+          Good form! Keep it up.
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -389,6 +425,8 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
                 Tracking is paused. Click Start Tracking to begin exercise detection.
               </div>
             )}
+            
+            {isTracking && getFormStatus()}
           </CardContent>
         </Card>
 

@@ -1,5 +1,5 @@
 
-import { Pose, calculateAngle, getKeypoint } from './poseDetectionService';
+import { Pose, calculateAngle, getKeypoint, calculateVerticalDistance, calculateHorizontalDistance } from './poseDetectionService';
 
 // Exercise types supported by the app
 export enum ExerciseType {
@@ -16,7 +16,8 @@ export enum RepState {
   UP = 'up',
   DOWN = 'down',
   COUNTING = 'counting',
-  RESTING = 'resting'
+  RESTING = 'resting',
+  INCORRECT_FORM = 'incorrectForm'
 }
 
 // Interface for exercise settings
@@ -32,6 +33,7 @@ export interface ExerciseSettings {
   };
   formInstructions: string[];
   musclesTargeted: string[];
+  primaryLandmarks: string[]; // Primary landmarks to track for this exercise
 }
 
 // Exercise definitions
@@ -52,7 +54,8 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
       'Go down until thighs are parallel to the ground',
       'Keep weight in heels'
     ],
-    musclesTargeted: ['Quadriceps', 'Hamstrings', 'Glutes', 'Core']
+    musclesTargeted: ['Quadriceps', 'Hamstrings', 'Glutes', 'Core'],
+    primaryLandmarks: ['left_hip', 'left_knee', 'left_ankle', 'right_hip', 'right_knee', 'right_ankle']
   },
   [ExerciseType.PUSHUP]: {
     name: 'Push-up',
@@ -70,7 +73,8 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
       'Lower until elbows are at 90 degrees',
       'Keep elbows close to your body'
     ],
-    musclesTargeted: ['Chest', 'Shoulders', 'Triceps', 'Core']
+    musclesTargeted: ['Chest', 'Shoulders', 'Triceps', 'Core'],
+    primaryLandmarks: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist']
   },
   [ExerciseType.BICEP_CURL]: {
     name: 'Bicep Curl',
@@ -88,7 +92,8 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
       'Curl up until forearms are vertical',
       'Lower weights in a controlled motion'
     ],
-    musclesTargeted: ['Biceps', 'Forearms']
+    musclesTargeted: ['Biceps', 'Forearms'],
+    primaryLandmarks: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist']
   },
   [ExerciseType.SHOULDER_PRESS]: {
     name: 'Shoulder Press',
@@ -106,7 +111,8 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
       'Don\'t lock your elbows at the top',
       'Lower weights in a controlled motion'
     ],
-    musclesTargeted: ['Shoulders', 'Triceps', 'Upper back']
+    musclesTargeted: ['Shoulders', 'Triceps', 'Upper back'],
+    primaryLandmarks: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist']
   },
   [ExerciseType.NONE]: {
     name: 'None',
@@ -119,7 +125,8 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
       downAngle: 0,
     },
     formInstructions: [],
-    musclesTargeted: []
+    musclesTargeted: [],
+    primaryLandmarks: []
   }
 };
 
@@ -131,6 +138,7 @@ export interface ExerciseState {
   repState: RepState;
   formFeedback: string[];
   lastRepTimestamp: number;
+  formCorrect: boolean; // Track if current form is correct
 }
 
 // Initialize a new exercise state
@@ -141,16 +149,14 @@ export function initExerciseState(type: ExerciseType): ExerciseState {
     setCount: 1,
     repState: RepState.STARTING,
     formFeedback: [],
-    lastRepTimestamp: Date.now()
+    lastRepTimestamp: Date.now(),
+    formCorrect: true
   };
 }
 
 // Detect which exercise is being performed based on the pose
 export function detectExerciseType(pose: Pose | null): ExerciseType {
   if (!pose) return ExerciseType.NONE;
-  
-  // This is a simplified detection - in a full implementation,
-  // we would use machine learning or more complex logic
   
   // Check if user is in a squat position
   const leftHip = getKeypoint(pose, 'left_hip');
@@ -205,6 +211,7 @@ export function processExerciseState(
   // Clone the current state to avoid mutations
   const newState = { ...currentState };
   newState.formFeedback = []; // Clear previous feedback
+  newState.formCorrect = true; // Start with assumption that form is correct
   
   const exerciseSettings = EXERCISES[currentState.type];
   
@@ -233,14 +240,18 @@ function processSquat(
   pose: Pose,
   settings: ExerciseSettings
 ): ExerciseState {
+  // Get primary landmarks for squats
   const leftHip = getKeypoint(pose, 'left_hip');
   const leftKnee = getKeypoint(pose, 'left_knee');
   const leftAnkle = getKeypoint(pose, 'left_ankle');
   
   if (!leftHip || !leftKnee || !leftAnkle) {
-    return { ...state, formFeedback: ['Cannot detect legs clearly'] };
+    state.formFeedback.push('Cannot detect legs clearly');
+    state.formCorrect = false;
+    return state;
   }
   
+  // Calculate key angles for squat form
   const kneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
   
   // Check back alignment for form feedback
@@ -252,6 +263,7 @@ function processSquat(
     const backAngle = calculateAngle(shoulder, hip, knee);
     if (backAngle < 160) {
       state.formFeedback.push('Keep your back straighter');
+      state.formCorrect = false;
     }
   }
   
@@ -261,7 +273,23 @@ function processSquat(
     // Check if knees are going too far forward
     if (knee.x < ankle.x - 50) {
       state.formFeedback.push('Knees too far forward, shift weight to heels');
+      state.formCorrect = false;
     }
+  }
+  
+  // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+    state.repState = RepState.INCORRECT_FORM;
+    state.formFeedback.push('Fix your form to continue');
+    return state;
+  }
+  
+  // If form was incorrect but is now fixed, return to appropriate state
+  if (state.formCorrect && state.repState === RepState.INCORRECT_FORM) {
+    // Determine if we should go back to UP or DOWN state based on knee angle
+    state.repState = kneeAngle < settings.thresholds.downAngle ? RepState.DOWN : RepState.UP;
+    state.formFeedback.push('Good form, continue your exercise');
   }
   
   // State machine for rep counting
@@ -305,6 +333,10 @@ function processSquat(
         state.formFeedback.push(`Rest: ${Math.round(settings.restBetweenSets - restTime)}s remaining`);
       }
       break;
+      
+    case RepState.INCORRECT_FORM:
+      // Already handled above
+      break;
   }
   
   return state;
@@ -316,12 +348,15 @@ function processPushup(
   pose: Pose,
   settings: ExerciseSettings
 ): ExerciseState {
+  // Focus on primary landmarks for pushups
   const leftShoulder = getKeypoint(pose, 'left_shoulder');
   const leftElbow = getKeypoint(pose, 'left_elbow');
   const leftWrist = getKeypoint(pose, 'left_wrist');
   
   if (!leftShoulder || !leftElbow || !leftWrist) {
-    return { ...state, formFeedback: ['Cannot detect arms clearly'] };
+    state.formFeedback.push('Cannot detect arms clearly');
+    state.formCorrect = false;
+    return state;
   }
   
   const elbowAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
@@ -335,7 +370,23 @@ function processPushup(
     const bodyAngle = calculateAngle(shoulder, hip, knee);
     if (Math.abs(bodyAngle - 180) > 15) {
       state.formFeedback.push('Keep your body straight');
+      state.formCorrect = false;
     }
+  }
+  
+  // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+    state.repState = RepState.INCORRECT_FORM;
+    state.formFeedback.push('Fix your form to continue');
+    return state;
+  }
+  
+  // If form was incorrect but is now fixed, return to appropriate state
+  if (state.formCorrect && state.repState === RepState.INCORRECT_FORM) {
+    // Determine if we should go back to UP or DOWN state based on elbow angle
+    state.repState = elbowAngle < settings.thresholds.downAngle ? RepState.DOWN : RepState.UP;
+    state.formFeedback.push('Good form, continue your exercise');
   }
   
   // State machine for rep counting
@@ -379,6 +430,10 @@ function processPushup(
         state.formFeedback.push(`Rest: ${Math.round(settings.restBetweenSets - restTime)}s remaining`);
       }
       break;
+      
+    case RepState.INCORRECT_FORM:
+      // Already handled above
+      break;
   }
   
   return state;
@@ -390,12 +445,15 @@ function processBicepCurl(
   pose: Pose,
   settings: ExerciseSettings
 ): ExerciseState {
+  // Focus on primary landmarks for bicep curls
   const rightShoulder = getKeypoint(pose, 'right_shoulder');
   const rightElbow = getKeypoint(pose, 'right_elbow');
   const rightWrist = getKeypoint(pose, 'right_wrist');
   
   if (!rightShoulder || !rightElbow || !rightWrist) {
-    return { ...state, formFeedback: ['Cannot detect arms clearly'] };
+    state.formFeedback.push('Cannot detect arms clearly');
+    state.formCorrect = false;
+    return state;
   }
   
   const elbowAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
@@ -403,6 +461,29 @@ function processBicepCurl(
   // Check elbow position for form feedback
   if (rightElbow.x > rightShoulder.x + 30) {
     state.formFeedback.push('Keep your elbows close to your body');
+    state.formCorrect = false;
+  }
+  
+  // Check for shoulder movement (should be minimal in proper bicep curl)
+  const verticalShoulderMovement = calculateVerticalDistance(rightShoulder, rightElbow);
+  if (Math.abs(verticalShoulderMovement) > 40) {
+    state.formFeedback.push('Minimize shoulder movement, focus on elbow flexion');
+    state.formCorrect = false;
+  }
+  
+  // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+    state.repState = RepState.INCORRECT_FORM;
+    state.formFeedback.push('Fix your form to continue');
+    return state;
+  }
+  
+  // If form was incorrect but is now fixed, return to appropriate state
+  if (state.formCorrect && state.repState === RepState.INCORRECT_FORM) {
+    // Determine if we should go back to UP or DOWN state based on elbow angle
+    state.repState = elbowAngle < settings.thresholds.upAngle ? RepState.UP : RepState.DOWN;
+    state.formFeedback.push('Good form, continue your exercise');
   }
   
   // State machine for rep counting
@@ -446,6 +527,10 @@ function processBicepCurl(
         state.formFeedback.push(`Rest: ${Math.round(settings.restBetweenSets - restTime)}s remaining`);
       }
       break;
+      
+    case RepState.INCORRECT_FORM:
+      // Already handled above
+      break;
   }
   
   return state;
@@ -457,32 +542,54 @@ function processShoulderPress(
   pose: Pose,
   settings: ExerciseSettings
 ): ExerciseState {
+  // Focus on primary landmarks for shoulder press
   const rightShoulder = getKeypoint(pose, 'right_shoulder');
   const rightElbow = getKeypoint(pose, 'right_elbow');
   const rightWrist = getKeypoint(pose, 'right_wrist');
   
   if (!rightShoulder || !rightElbow || !rightWrist) {
-    return { ...state, formFeedback: ['Cannot detect arms clearly'] };
+    state.formFeedback.push('Cannot detect arms clearly');
+    state.formCorrect = false;
+    return state;
   }
   
   const elbowAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
   
+  // Check wrist vertical position relative to elbow
+  const wristVerticalPosition = calculateVerticalDistance(rightWrist, rightShoulder);
+  
   // Form feedback
   if (rightWrist.x < rightElbow.x - 20) {
     state.formFeedback.push('Press directly upward');
+    state.formCorrect = false;
+  }
+  
+  // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+    state.repState = RepState.INCORRECT_FORM;
+    state.formFeedback.push('Fix your form to continue');
+    return state;
+  }
+  
+  // If form was incorrect but is now fixed, return to appropriate state
+  if (state.formCorrect && state.repState === RepState.INCORRECT_FORM) {
+    // Determine if we should go back to UP or DOWN state based on wrist position
+    state.repState = wristVerticalPosition < -100 ? RepState.UP : RepState.DOWN;
+    state.formFeedback.push('Good form, continue your exercise');
   }
   
   // State machine for rep counting
   switch (state.repState) {
     case RepState.STARTING:
     case RepState.DOWN:
-      if (elbowAngle > settings.thresholds.upAngle) {
+      if (elbowAngle > settings.thresholds.upAngle && wristVerticalPosition < -100) {
         state.repState = RepState.UP;
       }
       break;
     
     case RepState.UP:
-      if (elbowAngle < settings.thresholds.downAngle) {
+      if (elbowAngle < settings.thresholds.downAngle && wristVerticalPosition > -50) {
         state.repState = RepState.DOWN;
         state.repCount += 1;
         state.lastRepTimestamp = Date.now();
@@ -512,6 +619,10 @@ function processShoulderPress(
       } else {
         state.formFeedback.push(`Rest: ${Math.round(settings.restBetweenSets - restTime)}s remaining`);
       }
+      break;
+      
+    case RepState.INCORRECT_FORM:
+      // Already handled above
       break;
   }
   

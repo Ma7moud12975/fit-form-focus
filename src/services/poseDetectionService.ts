@@ -1,3 +1,4 @@
+
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import { initializeTensorFlow } from './tensorflowService';
@@ -113,6 +114,16 @@ export function calculateAngle(
 export function getKeypoint(pose: Pose | null, name: string): PoseKeypoint | null {
   if (!pose) return null;
   return pose.keypoints.find(kp => kp.name === name) || null;
+}
+
+// Calculate vertical distance between two points (positive means p1 is above p2)
+export function calculateVerticalDistance(p1: PoseKeypoint, p2: PoseKeypoint): number {
+  return p2.y - p1.y;
+}
+
+// Calculate horizontal distance between two points
+export function calculateHorizontalDistance(p1: PoseKeypoint, p2: PoseKeypoint): number {
+  return p2.x - p1.x;
 }
 
 // Add new interface for drawing options
