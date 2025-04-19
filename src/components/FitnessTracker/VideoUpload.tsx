@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileVideo, Upload, AlertCircle } from 'lucide-react';
