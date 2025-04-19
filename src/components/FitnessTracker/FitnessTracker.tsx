@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import WebcamView from "./WebcamView";
@@ -430,7 +429,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-2">
                 {Object.values(ExerciseType)
-                  .filter(type => type !== ExerciseType.NONE && type !== ExerciseType.PUSHUP)
+                  .filter(type => type !== ExerciseType.NONE)
                   .map((type) => (
                     <Button
                       key={type}
