@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import WebcamView from "./WebcamView";
@@ -167,9 +166,20 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
               canvasRef.current.height
             );
           }
+
+          // Determine if the form is correct based on the current exercise
+          let isCorrectForm = true;
+          if (currentExercise !== ExerciseType.NONE) {
+            const formIssues = exerciseState.formFeedback;
+            isCorrectForm = !formIssues.some(feedback => 
+              !feedback.includes('complete') && 
+              !feedback.includes('Rest') &&
+              !feedback.includes('Starting')
+            );
+          }
           
-          // Draw the pose on top of the image
-          drawPose(ctx, detectedPose);
+          // Draw the pose with color feedback
+          drawPose(ctx, detectedPose, { isCorrectForm });
         }
       }
 

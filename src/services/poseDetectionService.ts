@@ -1,4 +1,3 @@
-
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import { initializeTensorFlow } from './tensorflowService';
@@ -116,13 +115,32 @@ export function getKeypoint(pose: Pose | null, name: string): PoseKeypoint | nul
   return pose.keypoints.find(kp => kp.name === name) || null;
 }
 
-// Draw pose skeleton on canvas
+// Add new interface for drawing options
+interface DrawPoseOptions {
+  isCorrectForm?: boolean;
+}
+
+// Update the drawPose function to accept color options
 export function drawPose(
   ctx: CanvasRenderingContext2D, 
   pose: Pose,
+  options: DrawPoseOptions = {},
   minConfidence: number = 0.3
 ): void {
   if (!pose) return;
+
+  // Define colors based on form correctness
+  const skeletonColor = options.isCorrectForm !== undefined
+    ? options.isCorrectForm 
+      ? 'rgba(34, 197, 94, 0.8)'  // green for correct form
+      : 'rgba(239, 68, 68, 0.8)'  // red for incorrect form
+    : 'rgba(155, 135, 245, 0.8)'; // default purple
+
+  const keypointColor = options.isCorrectForm !== undefined
+    ? options.isCorrectForm
+      ? 'rgba(34, 197, 94, 0.8)'  // green for correct form
+      : 'rgba(239, 68, 68, 0.8)'  // red for incorrect form
+    : 'rgba(230, 67, 76, 0.8)';   // default red
 
   // Define connections between keypoints for drawing skeleton
   const connections = [
@@ -144,7 +162,7 @@ export function drawPose(
   });
 
   // Draw connections
-  ctx.strokeStyle = 'rgba(155, 135, 245, 0.8)';
+  ctx.strokeStyle = skeletonColor;
   ctx.lineWidth = 3;
   
   connections.forEach(([p1Name, p2Name]) => {
@@ -164,10 +182,9 @@ export function drawPose(
     if (keypoint.score > minConfidence) {
       const { x, y } = keypoint;
       
-      // Draw keypoint
       ctx.beginPath();
       ctx.arc(x, y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(230, 67, 76, 0.8)';
+      ctx.fillStyle = keypointColor;
       ctx.fill();
     }
   });
