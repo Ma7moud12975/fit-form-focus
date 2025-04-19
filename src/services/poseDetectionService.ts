@@ -126,12 +126,15 @@ export function calculateHorizontalDistance(p1: PoseKeypoint, p2: PoseKeypoint):
   return p2.x - p1.x;
 }
 
-// Add new interface for drawing options
-interface DrawPoseOptions {
+// Add new interface for drawing options with enhanced features for primary landmarks
+export interface DrawPoseOptions {
   isCorrectForm?: boolean;
+  exerciseType?: string;
+  primaryLandmarks?: string[]; // List of primary landmarks to highlight
+  formErrors?: Record<string, boolean>; // Individual form issues by body part
 }
 
-// Update the drawPose function to accept color options
+// Update the drawPose function to accept enhanced options
 export function drawPose(
   ctx: CanvasRenderingContext2D, 
   pose: Pose,
@@ -140,18 +143,17 @@ export function drawPose(
 ): void {
   if (!pose) return;
 
+  // Define base colors
+  const correctColor = 'rgba(34, 197, 94, 0.8)';  // green
+  const incorrectColor = 'rgba(239, 68, 68, 0.8)'; // red
+  const neutralColor = 'rgba(155, 135, 245, 0.8)'; // purple
+  
   // Define colors based on form correctness
   const skeletonColor = options.isCorrectForm !== undefined
     ? options.isCorrectForm 
-      ? 'rgba(34, 197, 94, 0.8)'  // green for correct form
-      : 'rgba(239, 68, 68, 0.8)'  // red for incorrect form
-    : 'rgba(155, 135, 245, 0.8)'; // default purple
-
-  const keypointColor = options.isCorrectForm !== undefined
-    ? options.isCorrectForm
-      ? 'rgba(34, 197, 94, 0.8)'  // green for correct form
-      : 'rgba(239, 68, 68, 0.8)'  // red for incorrect form
-    : 'rgba(230, 67, 76, 0.8)';   // default red
+      ? correctColor  
+      : incorrectColor
+    : neutralColor;
 
   // Define connections between keypoints for drawing skeleton
   const connections = [
@@ -173,7 +175,6 @@ export function drawPose(
   });
 
   // Draw connections
-  ctx.strokeStyle = skeletonColor;
   ctx.lineWidth = 3;
   
   connections.forEach(([p1Name, p2Name]) => {
@@ -181,6 +182,22 @@ export function drawPose(
     const p2 = keypointMap.get(p2Name);
     
     if (p1 && p2 && p1.score > minConfidence && p2.score > minConfidence) {
+      // Determine if this connection is part of a primary landmark
+      const isPrimaryConnection = options.primaryLandmarks && 
+        (options.primaryLandmarks.includes(p1Name) && options.primaryLandmarks.includes(p2Name));
+      
+      // Choose connection color based on importance and correctness
+      let connectionColor = skeletonColor;
+      
+      // If we have specific form errors and this connection is relevant to one of them
+      if (options.formErrors && (options.formErrors[p1Name] || options.formErrors[p2Name])) {
+        connectionColor = incorrectColor;
+      } else if (isPrimaryConnection) {
+        // Highlight primary connections more vividly
+        connectionColor = options.isCorrectForm ? correctColor : incorrectColor;
+      }
+      
+      ctx.strokeStyle = connectionColor;
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
       ctx.lineTo(p2.x, p2.y);
@@ -188,15 +205,39 @@ export function drawPose(
     }
   });
 
-  // Draw keypoints
+  // Draw keypoints with varying sizes and colors based on importance
   pose.keypoints.forEach(keypoint => {
     if (keypoint.score > minConfidence) {
-      const { x, y } = keypoint;
+      const { x, y, name } = keypoint;
+      
+      // Determine if this is a primary landmark
+      const isPrimary = options.primaryLandmarks && options.primaryLandmarks.includes(name);
+      
+      // Choose point color and size based on importance and form
+      let pointColor = skeletonColor;
+      let pointSize = 5;
+      
+      // If specific form errors are provided
+      if (options.formErrors && options.formErrors[name]) {
+        pointColor = incorrectColor;
+        pointSize = 7; // Larger for error points
+      } else if (isPrimary) {
+        // Primary landmarks are larger and colored based on form
+        pointColor = options.isCorrectForm ? correctColor : incorrectColor;
+        pointSize = 7;
+      }
       
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = keypointColor;
+      ctx.arc(x, y, pointSize, 0, 2 * Math.PI);
+      ctx.fillStyle = pointColor;
       ctx.fill();
+      
+      // Add a stroke around primary landmarks for visibility
+      if (isPrimary) {
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
   });
 }

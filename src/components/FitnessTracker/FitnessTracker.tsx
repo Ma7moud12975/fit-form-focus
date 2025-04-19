@@ -22,7 +22,6 @@ import {
   ExerciseType,
   EXERCISES,
   initExerciseState,
-  detectExerciseType,
   processExerciseState,
   RepState
 } from "@/services/exerciseService";
@@ -42,7 +41,6 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
   const [pose, setPose] = useState<Pose | null>(null);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType>(ExerciseType.NONE);
   const [exerciseState, setExerciseState] = useState<ExerciseState>(initExerciseState(ExerciseType.NONE));
-  const [selectedTab, setSelectedTab] = useState<string>("auto");
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
   const [inputMode, setInputMode] = useState<'webcam' | 'video'>('webcam');
   const [uploadedVideo, setUploadedVideo] = useState<HTMLVideoElement | null>(null);
@@ -169,38 +167,37 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
             );
           }
 
-          // Determine if the form is correct based on the current exercise state
-          const isCorrectForm = currentExercise !== ExerciseType.NONE ? exerciseState.formCorrect : true;
-          
-          // Draw the pose with color feedback
-          drawPose(ctx, detectedPose, { isCorrectForm });
+          if (currentExercise !== ExerciseType.NONE) {
+            // Get primary landmarks and form issues from exercise state
+            const primaryLandmarks = EXERCISES[currentExercise].primaryLandmarks;
+            
+            // Draw the pose with color feedback and highlighted primary landmarks
+            drawPose(ctx, detectedPose, { 
+              isCorrectForm: exerciseState.formCorrect,
+              primaryLandmarks: primaryLandmarks,
+              formErrors: exerciseState.formIssues
+            });
+          } else {
+            // Just draw the pose with neutral colors if no exercise is selected
+            drawPose(ctx, detectedPose);
+          }
         }
       }
 
-      if (detectedPose) {
-        if (selectedTab === "auto" && currentExercise === ExerciseType.NONE) {
-          const exerciseType = detectExerciseType(detectedPose);
-          if (exerciseType !== ExerciseType.NONE) {
-            setCurrentExercise(exerciseType);
-            setExerciseState(initExerciseState(exerciseType));
-            toast.success(`Exercise detected: ${EXERCISES[exerciseType].name}`);
-          }
+      if (detectedPose && currentExercise !== ExerciseType.NONE) {
+        const prevFormCorrect = exerciseState.formCorrect;
+        const updatedState = processExerciseState(exerciseState, detectedPose);
+        
+        // If form changed from incorrect to correct, show a success toast
+        if (!prevFormCorrect && updatedState.formCorrect) {
+          toast.success("Form corrected! Continue exercising");
+        } 
+        // If form changed from correct to incorrect, show a warning toast
+        else if (prevFormCorrect && !updatedState.formCorrect) {
+          toast.warning("Incorrect form detected. Pausing count.");
         }
-
-        if (currentExercise !== ExerciseType.NONE) {
-          const updatedState = processExerciseState(exerciseState, detectedPose);
-          
-          // If form changed from incorrect to correct, show a success toast
-          if (!exerciseState.formCorrect && updatedState.formCorrect) {
-            toast.success("Form corrected! Continue exercising");
-          } 
-          // If form changed from correct to incorrect, show a warning toast
-          else if (exerciseState.formCorrect && !updatedState.formCorrect) {
-            toast.warning("Incorrect form detected. Pausing count.");
-          }
-          
-          setExerciseState(updatedState);
-        }
+        
+        setExerciseState(updatedState);
       }
     } catch (error) {
       console.error("Error processing frame:", error);
@@ -227,14 +224,6 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     setCurrentExercise(type);
     setExerciseState(initExerciseState(type));
     toast.info(`Selected exercise: ${EXERCISES[type].name}`);
-  };
-
-  const handleTabChange = (tab: string) => {
-    setSelectedTab(tab);
-    if (tab === "auto") {
-      setCurrentExercise(ExerciseType.NONE);
-      setExerciseState(initExerciseState(ExerciseType.NONE));
-    }
   };
 
   const resetVideo = () => {
@@ -431,33 +420,17 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
         </Card>
 
         <div className="w-full lg:w-80">
-          <Tabs 
-            defaultValue="auto" 
-            value={selectedTab} 
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="auto">Auto Detect</TabsTrigger>
-              <TabsTrigger value="select">Select Exercise</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="auto" className="pt-4">
-              <ExerciseStats exerciseState={exerciseState} />
-              
-              {currentExercise === ExerciseType.NONE && (
-                <div className="mt-4 p-4 text-sm text-center text-muted-foreground">
-                  <p>
-                    Get into position to begin an exercise. The system will automatically detect and track your workout.
-                  </p>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="select" className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-2">
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center">
+                <Dumbbell className="w-5 h-5 mr-2" />
+                Select Exercise
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-2">
                 {Object.values(ExerciseType)
-                  .filter(type => type !== ExerciseType.NONE)
+                  .filter(type => type !== ExerciseType.NONE && type !== ExerciseType.PUSHUP)
                   .map((type) => (
                     <Button
                       key={type}
@@ -477,8 +450,14 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
               {currentExercise !== ExerciseType.NONE && (
                 <ExerciseStats exerciseState={exerciseState} />
               )}
-            </TabsContent>
-          </Tabs>
+              
+              {currentExercise === ExerciseType.NONE && (
+                <div className="p-4 text-sm text-center text-muted-foreground">
+                  <p>Select an exercise to begin tracking your workout.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
       
