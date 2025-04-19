@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import WebcamView from "./WebcamView";
@@ -44,6 +45,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
   const [inputMode, setInputMode] = useState<'webcam' | 'video'>('webcam');
   const [uploadedVideo, setUploadedVideo] = useState<HTMLVideoElement | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -62,6 +64,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
   }, []);
@@ -81,11 +84,14 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
       videoRef.current.src = uploadedVideo.src;
     }
     
+    setVideoError(null);
+    
     const startPlayback = () => {
       if (videoRef.current) {
         videoRef.current.play().catch(error => {
           console.error("Error playing video:", error);
-          toast.error("Failed to play video");
+          setVideoError("Failed to play video. Please try another file.");
+          setIsTracking(false);
         });
       }
     };
@@ -95,12 +101,40 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     } else {
       videoRef.current.oncanplay = startPlayback;
     }
+    
+    if (!animationRef.current && videoRef.current) {
+      processVideoFrame();
+    }
   };
   
   const pauseVideoPlayback = () => {
     if (videoRef.current) {
       videoRef.current.pause();
     }
+    
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  };
+
+  const processVideoFrame = () => {
+    if (!isModelLoaded || !isTracking || !videoRef.current) return;
+    
+    // Check if video is still playing
+    if (videoRef.current.paused || videoRef.current.ended) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+    
+    // Process the current video frame
+    processFrame(videoRef.current);
+    
+    // Request next frame
+    animationRef.current = requestAnimationFrame(processVideoFrame);
   };
 
   const processFrame = async (imageData: ImageData | HTMLVideoElement) => {
@@ -120,6 +154,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
       if (canvasRef.current && detectedPose) {
         const ctx = canvasRef.current.getContext("2d");
         if (ctx) {
+          // Clear the canvas before drawing
           ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
           
           if (imageData instanceof ImageData) {
@@ -132,6 +167,8 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
               canvasRef.current.height
             );
           }
+          
+          // Draw the pose on top of the image
           drawPose(ctx, detectedPose);
         }
       }
@@ -154,20 +191,20 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
     } catch (error) {
       console.error("Error processing frame:", error);
     }
-    
-    if (inputMode === 'video' && videoRef.current) {
-      if (!videoRef.current.paused && !videoRef.current.ended) {
-        animationRef.current = requestAnimationFrame(() => processFrame(videoRef.current!));
-      }
-    }
   };
 
   const handleVideoLoad = (video: HTMLVideoElement) => {
     setUploadedVideo(video);
     setInputMode('video');
-    
     setIsTracking(false);
     setPose(null);
+    setVideoError(null);
+    
+    if (canvasRef.current) {
+      // Set canvas dimensions to match the video
+      canvasRef.current.width = video.videoWidth;
+      canvasRef.current.height = video.videoHeight;
+    }
     
     toast.info("Video loaded! Press 'Start Tracking' to begin analysis");
   };
@@ -193,6 +230,16 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
         videoRef.current.play();
       }
     }
+  };
+
+  const handleToggleTracking = () => {
+    if (!isTracking && inputMode === 'video' && uploadedVideo) {
+      startVideoPlayback();
+    } else if (isTracking && inputMode === 'video') {
+      pauseVideoPlayback();
+    }
+    
+    setIsTracking(!isTracking);
   };
 
   return (
@@ -263,6 +310,22 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
                       height={480}
                     />
                     
+                    {videoError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 text-destructive rounded-md">
+                        <div className="bg-card p-4 rounded-md shadow-lg max-w-xs text-center">
+                          <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
+                          <p className="font-medium">{videoError}</p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-3"
+                            onClick={() => setVideoError(null)}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
                     {isTracking && (
                       <div className="absolute bottom-16 right-4">
                         <Button
@@ -290,7 +353,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
               
               <div className="absolute bottom-4 right-4">
                 <Button
-                  onClick={() => setIsTracking(!isTracking)}
+                  onClick={handleToggleTracking}
                   variant={isTracking ? "destructive" : "default"}
                   size="sm"
                   disabled={!isModelLoaded || (inputMode === 'video' && !uploadedVideo)}

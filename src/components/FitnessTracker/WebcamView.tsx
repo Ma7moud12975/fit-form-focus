@@ -24,13 +24,20 @@ const WebcamView: React.FC<WebcamViewProps> = ({
   const canvasRef = externalCanvasRef || internalCanvasRef;
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     async function setupCamera() {
       try {
         setIsLoading(true);
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width, height },
+          video: { 
+            width, 
+            height,
+            facingMode: "user",
+            // Request optimal settings for smooth movement
+            frameRate: { ideal: 30 }
+          },
           audio: false,
         });
         
@@ -57,34 +64,54 @@ const WebcamView: React.FC<WebcamViewProps> = ({
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      
+      // Cancel any pending animation frames
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
     };
   }, [width, height]);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current || !hasPermission || !onFrame) return;
 
-    const captureFrame = () => {
-      const ctx = canvasRef.current?.getContext("2d", { willReadFrequently: true });
-      if (!ctx || !videoRef.current) return;
+    // Create a more efficient capture frame function with throttling
+    let lastFrameTime = 0;
+    const frameDuration = 1000 / 30; // Target 30fps
+    
+    const captureFrame = (timestamp: number) => {
+      // Throttle frame capture to maintain consistent frame rate
+      if (timestamp - lastFrameTime >= frameDuration) {
+        lastFrameTime = timestamp;
+        
+        const ctx = canvasRef.current?.getContext("2d", { willReadFrequently: true });
+        if (!ctx || !videoRef.current) return;
 
-      // Draw the video frame to the canvas
-      ctx.drawImage(videoRef.current, 0, 0, width, height);
-      
-      // If we need to process the frame, get the ImageData and call onFrame
-      if (onFrame) {
-        const imageData = ctx.getImageData(0, 0, width, height);
-        onFrame(imageData);
+        // Draw the video frame to the canvas
+        ctx.drawImage(videoRef.current, 0, 0, width, height);
+        
+        // If we need to process the frame, get the ImageData and call onFrame
+        if (onFrame) {
+          const imageData = ctx.getImageData(0, 0, width, height);
+          onFrame(imageData);
+        }
       }
       
       // Continue capturing frames
-      requestAnimationFrame(captureFrame);
+      animationRef.current = requestAnimationFrame(captureFrame);
     };
 
     // Start capturing frames
-    const frameId = requestAnimationFrame(captureFrame);
+    animationRef.current = requestAnimationFrame(captureFrame);
     
     // Clean up
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
   }, [hasPermission, onFrame, width, height, drawCanvas]);
 
   return (

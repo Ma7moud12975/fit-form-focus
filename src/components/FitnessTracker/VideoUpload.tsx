@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileVideo, Upload, AlertCircle } from 'lucide-react';
@@ -13,9 +14,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const processVideoFile = (file: File) => {
     if (!file) return;
     
     setIsLoading(true);
@@ -28,6 +29,13 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
       return;
     }
 
+    // Check file type
+    if (!file.type.startsWith('video/')) {
+      setError("Please select a valid video file");
+      setIsLoading(false);
+      return;
+    }
+
     const fileURL = URL.createObjectURL(file);
     const video = document.createElement('video');
     
@@ -35,6 +43,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
     video.preload = 'metadata';
     video.playsInline = true;
     video.muted = true;
+    video.controls = true;
     
     video.onloadedmetadata = () => {
       if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -44,12 +53,9 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
         return;
       }
       
-      // Get dimensions, create a scaled version if needed
-      const width = video.videoWidth;
-      const height = video.videoHeight;
-      
       // Force load more of the video to ensure frames are available
       video.currentTime = 0;
+      
       video.onloadeddata = () => {
         // Reset to beginning
         video.currentTime = 0;
@@ -74,8 +80,46 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
     video.src = fileURL;
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      processVideoFile(file);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processVideoFile(e.dataTransfer.files[0]);
+    }
+  };
+
   return (
-    <div className={cn("flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-lg", className)}>
+    <div 
+      className={cn(
+        "flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-lg transition-colors",
+        dragActive ? "border-primary bg-primary/5" : "border-muted-foreground/20",
+        className
+      )}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
       <div className="text-center">
         <FileVideo className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
         <h3 className="text-lg font-medium">Upload Exercise Video</h3>
@@ -113,7 +157,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onVideoLoad, className }) => 
         ) : (
           <>
             <Upload className="w-4 h-4 mr-2" />
-            Select Video File
+            {dragActive ? "Drop video here" : "Select Video File"}
           </>
         )}
       </Button>
