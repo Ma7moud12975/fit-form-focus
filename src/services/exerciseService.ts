@@ -1,3 +1,4 @@
+
 import { Pose, calculateAngle, getKeypoint, calculateVerticalDistance, calculateHorizontalDistance } from './poseDetectionService';
 
 // Exercise types supported by the app
@@ -47,10 +48,10 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 60,
     sets: 3,
     thresholds: {
-      upAngle: 165, // Slightly more forgiving for standing position
-      downAngle: 100, // Slightly higher threshold for squat depth
-      backAngleMin: 155, // More forgiving back angle
-      kneePositionThreshold: 35, // Slightly more tolerance for knee position
+      upAngle: 150, // More forgiving standing position (was 165)
+      downAngle: 110, // More forgiving squat depth (was 100)
+      backAngleMin: 140, // More forgiving back angle (was 155)
+      kneePositionThreshold: 45, // More tolerance for knee position (was 35)
     },
     formInstructions: [
       'Keep your back straight throughout the movement',
@@ -88,9 +89,9 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 60,
     sets: 3,
     thresholds: {
-      upAngle: 165, // More forgiving at top of press
-      downAngle: 95, // More forgiving at bottom of press
-      backAngleMin: 160, // Slightly more forgiving back angle
+      upAngle: 150, // More forgiving at top of press (was 165)
+      downAngle: 110, // More forgiving at bottom of press (was 95)
+      backAngleMin: 150, // Slightly more forgiving back angle (was 160)
     },
     formInstructions: [
       'Keep your core engaged and back straight',
@@ -200,13 +201,15 @@ function processSquat(
   // Check back alignment using shoulder-hip-knee angle
   const backAngle = calculateAngle(leftShoulder, leftHip, leftKnee);
   
-  // Log detailed analytics for debugging
   // console.log(`Squat - Knee Angle: ${kneeAngle.toFixed(1)}°, Back Angle: ${backAngle.toFixed(1)}°`);
   
-  // Check if back is straight enough
-  if (backAngle < (settings.thresholds.backAngleMin || 160)) {
+  // Make form checks more lenient - only flag severe issues
+  let hasFormIssues = false;
+  
+  // Check if back is excessively leaning forward
+  if (backAngle < (settings.thresholds.backAngleMin || 140)) {
     state.formFeedback.push('Keep your back straighter, avoid excessive forward lean');
-    state.formCorrect = false;
+    hasFormIssues = true;
     state.formIssues['left_shoulder'] = true;
     state.formIssues['right_shoulder'] = true;
     state.formIssues['left_hip'] = true;
@@ -215,16 +218,21 @@ function processSquat(
   
   // Knee position check - should be aligned with ankle/foot
   const kneeForwardPosition = leftKnee.x - leftAnkle.x;
-  if (Math.abs(kneeForwardPosition) > (settings.thresholds.kneePositionThreshold || 30)) {
+  if (Math.abs(kneeForwardPosition) > (settings.thresholds.kneePositionThreshold || 45)) {
     state.formFeedback.push('Align your knees better with your ankles');
-    state.formCorrect = false;
+    hasFormIssues = true;
     state.formIssues['left_knee'] = true;
     state.formIssues['right_knee'] = true;
   }
   
+  // Make form correction less strict - only mark as incorrect if multiple severe issues
+  state.formCorrect = !hasFormIssues || kneeAngle < settings.thresholds.downAngle;
+  
   // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  // But be more forgiving - only switch to incorrect form if it's really bad
   if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
-      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING &&
+      hasFormIssues) {
     state.repState = RepState.INCORRECT_FORM;
     state.formFeedback.push('Fix your form to continue counting reps');
     return state;
@@ -420,31 +428,37 @@ function processShoulderPress(
   
   // Check back angle (should remain upright, not arch backward)
   const backAngle = calculateAngle(rightShoulder, rightHip, { x: rightHip.x, y: rightHip.y - 100 }); // Vertical reference
-  const isBackArching = backAngle < (settings.thresholds.backAngleMin || 165);
+  const isBackArching = backAngle < (settings.thresholds.backAngleMin || 150);
   
-  // Log detailed analytics for debugging
   // console.log(`Shoulder Press - Elbow Angle: ${elbowAngle.toFixed(1)}°, Back Angle: ${backAngle.toFixed(1)}°, Wrist Vertical: ${wristVerticalPosition}`);
   
-  // Check for back arching
-  if (isBackArching) {
+  let hasFormIssues = false;
+  
+  // Check for back arching - but be more lenient
+  if (isBackArching && backAngle < 140) { // Only flag if it's really excessive
     state.formFeedback.push('Avoid arching your back, keep your core engaged');
-    state.formCorrect = false;
+    hasFormIssues = true;
     state.formIssues['right_hip'] = true;
     state.formIssues['left_hip'] = true;
   }
   
-  // Check for vertical path of the press
+  // Check for vertical path of the press - be more lenient
   const wristHorizontalOffset = Math.abs(rightWrist.x - rightShoulder.x);
-  if (wristHorizontalOffset > 40 && wristVerticalPosition < -50) { // Check only when arms are raised
+  if (wristHorizontalOffset > 60 && wristVerticalPosition < -70) { // More forgiving (was 40/-50)
     state.formFeedback.push('Press directly upward, maintain a vertical path');
-    state.formCorrect = false;
+    hasFormIssues = true;
     state.formIssues['right_wrist'] = true;
     state.formIssues['left_wrist'] = true;
   }
   
+  // Make form correction less strict - only mark as incorrect if multiple severe issues
+  state.formCorrect = !hasFormIssues || (wristVerticalPosition < -100 && elbowAngle > 140);
+  
   // If form is incorrect and we're not in INCORRECT_FORM state, transition to it
+  // But be more forgiving - only switch to incorrect form if it's really bad
   if (!state.formCorrect && state.repState !== RepState.INCORRECT_FORM && 
-      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING) {
+      state.repState !== RepState.RESTING && state.repState !== RepState.STARTING &&
+      hasFormIssues) {
     state.repState = RepState.INCORRECT_FORM;
     state.formFeedback.push('Fix your form to continue counting reps');
     return state;
@@ -457,17 +471,17 @@ function processShoulderPress(
     state.formFeedback.push('Good form, continue your exercise');
   }
   
-  // State machine for rep counting
+  // State machine for rep counting - with more forgiving thresholds
   switch (state.repState) {
     case RepState.STARTING:
     case RepState.DOWN:
-      if (elbowAngle > settings.thresholds.upAngle && wristVerticalPosition < -100) {
+      if (elbowAngle > settings.thresholds.upAngle || wristVerticalPosition < -120) {
         state.repState = RepState.UP;
       }
       break;
     
     case RepState.UP:
-      if (elbowAngle < settings.thresholds.downAngle && wristVerticalPosition > -50) {
+      if (elbowAngle < settings.thresholds.downAngle || wristVerticalPosition > -40) {
         state.repState = RepState.DOWN;
         state.repCount += 1;
         state.lastRepTimestamp = Date.now();
@@ -506,3 +520,4 @@ function processShoulderPress(
   
   return state;
 }
+
