@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { ExerciseType, ExerciseState, EXERCISES } from "@/services/exerciseService";
 
 // Define exercise colors
@@ -56,8 +56,12 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                 <Bar 
                   dataKey="reps" 
                   name="Total Reps"
-                  fill={({ color }) => color || "var(--primary)"}
-                />
+                  fill="#8884d8" // Default color
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
