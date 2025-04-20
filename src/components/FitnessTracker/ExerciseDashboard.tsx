@@ -18,6 +18,13 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ExerciseType, ExerciseState, EXERCISES } from "@/services/exerciseService";
 
+// Define exercise colors
+const exerciseColors = {
+  [ExerciseType.SQUAT]: "#8B5CF6", // Vivid Purple
+  [ExerciseType.BICEP_CURL]: "#D946EF", // Magenta Pink
+  [ExerciseType.SHOULDER_PRESS]: "#F97316", // Bright Orange
+};
+
 interface ExerciseDashboardProps {
   exerciseStates: Record<ExerciseType, ExerciseState>;
 }
@@ -29,6 +36,7 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
       name: EXERCISES[type as ExerciseType].name,
       reps: state.repCount,
       sets: state.setCount,
+      color: exerciseColors[type as ExerciseType],
     }));
 
   return (
@@ -45,7 +53,11 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="reps" fill="var(--primary)" name="Total Reps" />
+                <Bar 
+                  dataKey="reps" 
+                  name="Total Reps"
+                  fill={({ color }) => color || "var(--primary)"}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -70,14 +82,23 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
               {Object.entries(exerciseStates)
                 .filter(([type]) => type !== ExerciseType.NONE)
                 .map(([type, state]) => (
-                  <TableRow key={type}>
-                    <TableCell className="font-medium">
+                  <TableRow 
+                    key={type}
+                    style={{ 
+                      backgroundColor: `${exerciseColors[type as ExerciseType]}10`
+                    }}
+                  >
+                    <TableCell 
+                      className="font-medium"
+                      style={{ 
+                        color: exerciseColors[type as ExerciseType]
+                      }}
+                    >
                       {EXERCISES[type as ExerciseType].name}
                     </TableCell>
                     <TableCell>{state.repCount}</TableCell>
                     <TableCell>{state.setCount}</TableCell>
                     <TableCell>
-                      {/* Since there's no direct "correctFormCount" property, we'll assume good form if formCorrect is true */}
                       {state.formCorrect ? "100%" : "Form needs improvement"}
                     </TableCell>
                   </TableRow>

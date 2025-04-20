@@ -4,6 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ExerciseType, EXERCISES } from "@/services/exerciseService";
 import { Card } from "@/components/ui/card";
 
+// Define exercise GIF URLs
+const exerciseImages = {
+  [ExerciseType.SQUAT]: "https://i.pinimg.com/originals/42/52/27/425227c898782116a5955666be277885.gif",
+  [ExerciseType.BICEP_CURL]: "https://i.pinimg.com/originals/68/4d/50/684d50925eabbdf60f66d4bf7013c9ef.gif",
+  [ExerciseType.SHOULDER_PRESS]: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExa2RtcjdoNGxzaGE2dHJwM3hxaHplMnhwcGNjc2VoNHF0Z2VuZ25wNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7lugb7ObGYiXe/giphy.gif"
+};
+
 interface ExerciseDemoModalProps {
   exerciseType: ExerciseType;
   open: boolean;
@@ -28,7 +35,7 @@ const ExerciseDemoModal: React.FC<ExerciseDemoModalProps> = ({
         <div className="space-y-4">
           <Card className="overflow-hidden">
             <img
-              src={`/exercises/${exerciseType.toLowerCase()}.gif`}
+              src={exerciseImages[exerciseType]}
               alt={`${exercise.name} demonstration`}
               className="w-full h-auto"
             />

@@ -1,4 +1,3 @@
-
 import { Pose, calculateAngle, getKeypoint, calculateVerticalDistance, calculateHorizontalDistance } from './poseDetectionService';
 
 // Exercise types supported by the app
@@ -48,10 +47,10 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 60,
     sets: 3,
     thresholds: {
-      upAngle: 170, // Hip angle when standing (knee near full extension)
-      downAngle: 90, // Hip angle at bottom of squat (thigh parallel to ground)
-      backAngleMin: 160, // Minimum angle for a straight back (avoid excessive forward lean)
-      kneePositionThreshold: 30, // Threshold for knee position relative to ankle
+      upAngle: 165, // Slightly more forgiving for standing position
+      downAngle: 100, // Slightly higher threshold for squat depth
+      backAngleMin: 155, // More forgiving back angle
+      kneePositionThreshold: 35, // Slightly more tolerance for knee position
     },
     formInstructions: [
       'Keep your back straight throughout the movement',
@@ -69,9 +68,9 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 45,
     sets: 3,
     thresholds: {
-      upAngle: 45, // Elbow angle at top of curl (maximum flexion)
-      downAngle: 160, // Elbow angle at bottom of curl (near full extension)
-      backAngleMin: 165, // Keep back straight, no excessive leaning
+      upAngle: 50, // Slightly more forgiving at top of curl
+      downAngle: 150, // More forgiving at bottom of curl
+      backAngleMin: 160, // Slightly more forgiving back angle
     },
     formInstructions: [
       'Keep elbows close to your sides throughout the movement',
@@ -89,9 +88,9 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 60,
     sets: 3,
     thresholds: {
-      upAngle: 170, // Elbow angle at top of press (near full extension)
-      downAngle: 90, // Elbow angle at bottom of press (starting position)
-      backAngleMin: 165, // Avoid excessive back arching during the press
+      upAngle: 165, // More forgiving at top of press
+      downAngle: 95, // More forgiving at bottom of press
+      backAngleMin: 160, // Slightly more forgiving back angle
     },
     formInstructions: [
       'Keep your core engaged and back straight',
