@@ -6,6 +6,8 @@ import FormGuide from "./FormGuide";
 import WelcomeModal from "./WelcomeModal";
 import VideoUpload from "./VideoUpload";
 import LoadingAnimation from "./LoadingAnimation";
+import ExerciseDemoModal from "./ExerciseDemoModal";
+import ExerciseDashboard from "./ExerciseDashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -290,7 +292,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
         [currentExercise]: exerciseState
       }));
     }
-  }, [exerciseState.totalReps, currentExercise]);
+  }, [exerciseState.reps, currentExercise]);
 
   return (
     <div className={cn("grid gap-6", className)}>
@@ -300,6 +302,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
         open={showExerciseDemo}
         onClose={() => setShowExerciseDemo(false)}
       />
+      
       <div className="flex flex-col lg:flex-row gap-6">
         <Card className="flex-1">
           <CardHeader className="pb-2">

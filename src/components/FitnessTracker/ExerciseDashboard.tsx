@@ -27,7 +27,7 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
     .filter(([type]) => type !== ExerciseType.NONE)
     .map(([type, state]) => ({
       name: EXERCISES[type as ExerciseType].name,
-      reps: state.totalReps,
+      reps: state.reps,
       sets: state.setCount,
     }));
 
@@ -74,10 +74,10 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                     <TableCell className="font-medium">
                       {EXERCISES[type as ExerciseType].name}
                     </TableCell>
-                    <TableCell>{state.totalReps}</TableCell>
+                    <TableCell>{state.reps}</TableCell>
                     <TableCell>{state.setCount}</TableCell>
                     <TableCell>
-                      {Math.round((state.correctFormCount / Math.max(state.totalReps, 1)) * 100)}%
+                      {Math.round((state.correctFormCount / Math.max(state.reps, 1)) * 100)}%
                     </TableCell>
                   </TableRow>
                 ))}
