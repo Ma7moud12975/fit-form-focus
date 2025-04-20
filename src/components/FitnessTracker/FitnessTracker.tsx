@@ -292,7 +292,7 @@ const FitnessTracker: React.FC<FitnessTrackerProps> = ({ className }) => {
         [currentExercise]: exerciseState
       }));
     }
-  }, [exerciseState.reps, currentExercise]);
+  }, [exerciseState.repCount, currentExercise]);
 
   return (
     <div className={cn("grid gap-6", className)}>

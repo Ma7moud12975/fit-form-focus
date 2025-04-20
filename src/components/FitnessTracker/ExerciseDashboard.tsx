@@ -27,7 +27,7 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
     .filter(([type]) => type !== ExerciseType.NONE)
     .map(([type, state]) => ({
       name: EXERCISES[type as ExerciseType].name,
-      reps: state.reps,
+      reps: state.repCount,
       sets: state.setCount,
     }));
 
@@ -74,10 +74,11 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                     <TableCell className="font-medium">
                       {EXERCISES[type as ExerciseType].name}
                     </TableCell>
-                    <TableCell>{state.reps}</TableCell>
+                    <TableCell>{state.repCount}</TableCell>
                     <TableCell>{state.setCount}</TableCell>
                     <TableCell>
-                      {Math.round((state.correctFormCount / Math.max(state.reps, 1)) * 100)}%
+                      {/* Since there's no direct "correctFormCount" property, we'll assume good form if formCorrect is true */}
+                      {state.formCorrect ? "100%" : "Form needs improvement"}
                     </TableCell>
                   </TableRow>
                 ))}
