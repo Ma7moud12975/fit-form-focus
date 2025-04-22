@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Card,
@@ -102,7 +103,7 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                     <TableCell>{state.repCount}</TableCell>
                     <TableCell>{Math.max(0, state.setCount - 1)}</TableCell>
                     <TableCell>
-                      {state.formCorrect ? "100%" : "0%"}
+                      {type === ExerciseType.NONE ? "0%" : (state.formCorrect ? "100%" : "0%")}
                     </TableCell>
                   </TableRow>
                 ))}
