@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Card,
@@ -126,4 +125,3 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
 };
 
 export default ExerciseDashboard;
-
