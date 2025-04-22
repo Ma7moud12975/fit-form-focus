@@ -103,11 +103,11 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                     <TableCell>{state.repCount}</TableCell>
                     <TableCell>{Math.max(0, state.setCount - 1)}</TableCell>
                     <TableCell>
-                      {type === ExerciseType.NONE ? "0%" : (state.formCorrect ? "100%" : "0%")}
+                      {state.formCorrect ? "100%" : "0%"}
                     </TableCell>
                   </TableRow>
                 ))}
-              {Object.keys(exerciseStates).filter(type => type === ExerciseType.NONE).length > 0 && (
+              {Object.keys(exerciseStates).filter(type => type !== ExerciseType.NONE).length === 0 && (
                 <TableRow>
                   <TableCell 
                     colSpan={4} 
