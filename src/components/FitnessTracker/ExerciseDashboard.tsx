@@ -101,12 +101,22 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                       {EXERCISES[type as ExerciseType].name}
                     </TableCell>
                     <TableCell>{state.repCount}</TableCell>
-                    <TableCell>{state.setCount}</TableCell>
+                    <TableCell>{Math.max(0, state.setCount - 1)}</TableCell>
                     <TableCell>
-                      {state.formCorrect ? "100%" : "Form needs improvement"}
+                      {state.formCorrect ? "100%" : "0%"}
                     </TableCell>
                   </TableRow>
                 ))}
+              {Object.keys(exerciseStates).filter(type => type === ExerciseType.NONE).length > 0 && (
+                <TableRow>
+                  <TableCell 
+                    colSpan={4} 
+                    className="text-center text-muted-foreground"
+                  >
+                    No exercise selected
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -116,3 +126,4 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
 };
 
 export default ExerciseDashboard;
+
