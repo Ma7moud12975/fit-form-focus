@@ -1,4 +1,3 @@
-
 import { Pose, calculateAngle, getKeypoint, calculateVerticalDistance, calculateHorizontalDistance } from './poseDetectionService';
 
 // Exercise types supported by the app
@@ -245,20 +244,34 @@ function processSquat(
     state.formFeedback.push('Good form, continue your exercise');
   }
   
-  // State machine for rep counting
+  // Updated state machine for rep counting with clearer logic
   switch (state.repState) {
     case RepState.STARTING:
+      // From starting position, we need to first establish if user is standing or squatting
+      if (kneeAngle > settings.thresholds.upAngle) {
+        state.repState = RepState.UP;
+        state.formFeedback.push('Starting position detected. Perform a squat.');
+      } else if (kneeAngle < settings.thresholds.downAngle) {
+        state.repState = RepState.DOWN;
+        state.formFeedback.push('Starting in squat position. Stand up to begin counting.');
+      }
+      break;
+    
     case RepState.UP:
+      // Only transition to DOWN when the knee angle indicates a deep enough squat
       if (kneeAngle < settings.thresholds.downAngle) {
         state.repState = RepState.DOWN;
+        state.formFeedback.push('Good squat depth!');
       }
       break;
     
     case RepState.DOWN:
+      // Only transition to UP and count a rep when user stands fully back up
       if (kneeAngle > settings.thresholds.upAngle) {
         state.repState = RepState.UP;
         state.repCount += 1;
         state.lastRepTimestamp = Date.now();
+        state.formFeedback.push(`Rep ${state.repCount} complete!`);
         
         // Check if set is complete
         if (state.repCount >= settings.targetReps) {
@@ -520,4 +533,3 @@ function processShoulderPress(
   
   return state;
 }
-
