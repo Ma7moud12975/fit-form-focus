@@ -107,7 +107,9 @@ const ExerciseDashboard: React.FC<ExerciseDashboardProps> = ({ exerciseStates })
                     </TableCell>
                   </TableRow>
                 ))}
-              {Object.keys(exerciseStates).filter(type => type !== ExerciseType.NONE).length === 0 && (
+              {Object.keys(exerciseStates)
+                .filter(type => type !== ExerciseType.NONE)
+                .length === 0 && (
                 <TableRow>
                   <TableCell 
                     colSpan={4} 
