@@ -23,13 +23,13 @@ export function UserProfileForm() {
   const { setUserProfile, userProfile } = useUserProfile();
   const [open, setOpen] = React.useState(false);
 
-  // Define defaultValues with explicit non-optional values to match UserProfile type
+  // Create defaultValues object with non-optional values
   const defaultValues: UserProfile = {
-    name: userProfile?.name ?? "",
-    age: userProfile?.age ?? 25,
-    height: userProfile?.height ?? 170,
-    weight: userProfile?.weight ?? 70,
-  } as UserProfile; // Use type assertion to ensure TypeScript treats this as a complete UserProfile
+    name: userProfile?.name || "", // Use logical OR to ensure string type
+    age: userProfile?.age || 25, // Use logical OR to ensure number type
+    height: userProfile?.height || 170,
+    weight: userProfile?.weight || 70,
+  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -129,4 +129,3 @@ export function UserProfileForm() {
     </Dialog>
   );
 }
-
