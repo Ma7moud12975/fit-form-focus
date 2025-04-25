@@ -1,4 +1,3 @@
-
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -24,12 +23,12 @@ export function UserProfileForm() {
   const [open, setOpen] = React.useState(false);
 
   // Create defaultValues object with non-optional values
-  const defaultValues: UserProfile = {
-    name: userProfile?.name || "", // Use logical OR to ensure string type
-    age: userProfile?.age || 25, // Use logical OR to ensure number type
-    height: userProfile?.height || 170,
-    weight: userProfile?.weight || 70,
-  };
+  const defaultValues = {
+    name: userProfile?.name ?? "",
+    age: userProfile?.age ?? 25,
+    height: userProfile?.height ?? 170,
+    weight: userProfile?.weight ?? 70,
+  } satisfies UserProfile;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
