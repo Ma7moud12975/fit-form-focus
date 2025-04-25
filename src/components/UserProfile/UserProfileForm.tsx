@@ -23,12 +23,12 @@ export function UserProfileForm() {
   const { setUserProfile, userProfile } = useUserProfile();
   const [open, setOpen] = React.useState(false);
 
-  // Create defaultValues that match the UserProfile interface
+  // Create defaultValues that match the UserProfile interface with definite non-optional values
   const defaultValues: UserProfile = {
-    name: userProfile?.name || "",
-    age: userProfile?.age || 25,
-    height: userProfile?.height || 170,
-    weight: userProfile?.weight || 70,
+    name: userProfile ? userProfile.name : "",
+    age: userProfile ? userProfile.age : 25,
+    height: userProfile ? userProfile.height : 170,
+    weight: userProfile ? userProfile.weight : 70,
   };
 
   const form = useForm<z.infer<typeof formSchema>>({
