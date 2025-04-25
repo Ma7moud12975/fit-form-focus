@@ -23,13 +23,13 @@ export function UserProfileForm() {
   const { setUserProfile, userProfile } = useUserProfile();
   const [open, setOpen] = React.useState(false);
 
-  // Create defaultValues that match the UserProfile interface with definite non-optional values
+  // Create defaultValues with explicit type assertion to ensure non-optional properties
   const defaultValues: UserProfile = {
     name: userProfile ? userProfile.name : "",
     age: userProfile ? userProfile.age : 25,
     height: userProfile ? userProfile.height : 170,
     weight: userProfile ? userProfile.weight : 70,
-  };
+  } as const;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
