@@ -32,6 +32,7 @@ export interface ExerciseSettings {
     backAngleMin?: number;
     backAngleMax?: number;
     kneePositionThreshold?: number;
+    upperArmMovement?: number;
   };
   formInstructions: string[];
   musclesTargeted: string[];
@@ -47,10 +48,10 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 60,
     sets: 3,
     thresholds: {
-      upAngle: 150, // More forgiving standing position (was 165)
-      downAngle: 110, // More forgiving squat depth (was 100)
-      backAngleMin: 140, // More forgiving back angle (was 155)
-      kneePositionThreshold: 45, // More tolerance for knee position (was 35)
+      upAngle: 165,
+      downAngle: 100,
+      backAngleMin: 135, // 180 - 45 (max forward lean)
+      kneePositionThreshold: 35,
     },
     formInstructions: [
       'Keep your back straight throughout the movement',
@@ -68,9 +69,10 @@ export const EXERCISES: Record<ExerciseType, ExerciseSettings> = {
     restBetweenSets: 45,
     sets: 3,
     thresholds: {
-      upAngle: 50, // Slightly more forgiving at top of curl
-      downAngle: 150, // More forgiving at bottom of curl
-      backAngleMin: 160, // Slightly more forgiving back angle
+      upAngle: 55,
+      downAngle: 155,
+      backAngleMin: 160,
+      upperArmMovement: 25,
     },
     formInstructions: [
       'Keep elbows close to your sides throughout the movement',
