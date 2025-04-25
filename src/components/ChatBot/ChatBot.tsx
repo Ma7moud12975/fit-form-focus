@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { getChatResponse } from "@/services/chatService";
 import { toast } from "sonner";
+import { useUserProfile } from "@/contexts/UserProfileContext";
+import { UserProfileForm } from "@/components/UserProfile/UserProfileForm";
 
 interface Message {
   content: string;
@@ -19,8 +20,8 @@ export const ChatBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { userProfile } = useUserProfile();
 
-  // Add welcome message when chat is opened for the first time
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       setMessages([
@@ -32,7 +33,6 @@ export const ChatBot = () => {
     }
   }, [isOpen, messages.length]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -49,24 +49,20 @@ export const ChatBot = () => {
     setInput("");
     setIsLoading(true);
 
-    // Add user message
     setMessages(prev => [...prev, { content: userMessage, isUser: true }]);
 
     try {
-      // Add a temporary loading message
       const loadingMsgIndex = messages.length;
       setMessages(prev => [...prev, { content: "Thinking...", isUser: false }]);
       
-      const response = await getChatResponse(userMessage);
+      const response = await getChatResponse(userMessage, userProfile);
       
-      // Replace loading message with actual response
       setMessages(prev => [
         ...prev.slice(0, loadingMsgIndex),
         { content: response, isUser: false }
       ]);
     } catch (error) {
       toast.error("Failed to get response from AI");
-      // Remove the loading message if there was an error
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
@@ -85,8 +81,9 @@ export const ChatBot = () => {
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-[400px] flex flex-col h-full p-0">
-        <SheetHeader className="p-4 border-b">
+        <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
           <SheetTitle>Fitness Assistant</SheetTitle>
+          <UserProfileForm />
         </SheetHeader>
         
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>

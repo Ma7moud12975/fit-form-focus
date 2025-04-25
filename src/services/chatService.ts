@@ -1,11 +1,11 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { UserProfile } from "@/types/userProfile";
 
 const genAI = new GoogleGenerativeAI("AIzaSyCnlo4wBA7HJe-n7wp5anejyZCo-G1oHEQ");
 
-export const getChatResponse = async (message: string) => {
+export const getChatResponse = async (message: string, userProfile: UserProfile | null) => {
   try {
-    // Use the correct model version with proper configuration
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-pro",
       generationConfig: {
@@ -16,12 +16,17 @@ export const getChatResponse = async (message: string) => {
       }
     });
     
-    // Create a proper chat session with system instructions
+    let systemPrompt = "You are a helpful fitness assistant who provides expert advice on exercises, fitness routines, and health information.";
+    
+    if (userProfile) {
+      systemPrompt += ` The user's profile: Name: ${userProfile.name}, Age: ${userProfile.age}, Height: ${userProfile.height}cm, Weight: ${userProfile.weight}kg. Please consider this information when providing advice.`;
+    }
+    
     const chat = model.startChat({
       history: [
         {
           role: "user",
-          parts: [{ text: "You are a helpful fitness assistant who provides expert advice on exercises, fitness routines, and health information."}],
+          parts: [{ text: systemPrompt }],
         },
         {
           role: "model",
@@ -36,7 +41,6 @@ export const getChatResponse = async (message: string) => {
       }
     });
 
-    // Send the message to the chat
     const result = await chat.sendMessage(message);
     const response = await result.response;
     return response.text();
