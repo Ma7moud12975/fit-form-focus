@@ -1,8 +1,8 @@
-
 import React from "react";
 import FitnessTracker from "@/components/FitnessTracker/FitnessTracker";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Dumbbell, Github } from "lucide-react";
+import { ChatBot } from "@/components/ChatBot/ChatBot";
 
 const Index = () => {
   return (
@@ -79,6 +79,9 @@ const Index = () => {
           </p>
         </div>
       </footer>
+
+      {/* Chat Bot */}
+      <ChatBot />
     </div>
   );
 };
